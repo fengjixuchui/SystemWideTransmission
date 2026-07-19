@@ -7,9 +7,6 @@
 
 #pragma data_seg("NONPAGED_DATA")
 
-typedef struct _SYSTEM_MODULE{HANDLE Section; PVOID MappedBase; PVOID ImageBase; ULONG ImageSize; ULONG Flags; USHORT LoadOrderIndex; USHORT InitOrderIndex; USHORT LoadCount; USHORT OffsetToFileName; UCHAR FullPathName[256];} SYSTEM_MODULE, *PSYSTEM_MODULE;
-typedef struct _SYSTEM_MODULE_INFORMATION{ULONG Count; SYSTEM_MODULE Module[1];} SYSTEM_MODULE_INFORMATION, *PSYSTEM_MODULE_INFORMATION;
-
 typedef __int64 (*pHalpTscQueryCounterOrdered)();
 
 typedef struct {

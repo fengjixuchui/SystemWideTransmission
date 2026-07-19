@@ -5,6 +5,8 @@
 
 #define IOCTL_WIDE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x512, METHOD_BUFFERED, FILE_WRITE_DATA)
 
+#pragma data_seg("NONPAGED_DATA")
+
 typedef __int64 (*pHalpTscQueryCounterOrdered)();
 
 typedef struct {
@@ -18,13 +20,12 @@ typedef struct {
     __int64 ChangedTime;
 }InstantTime;
 
-#pragma data_seg("NONPAGED_DATA")
-
 InstantTime ActualTime;
 TransmissionMode Transmission = {1, 1};
 
 ULONG_PTR HalpPerformanceCounterAddress;
 ULONG_PTR HalpTimerQueryCounterHandlersAddress;
+ULONG_PTR* CounterFunction = NULL;
 pHalpTscQueryCounterOrdered HalpTscQueryCounterOrdered = NULL;
 
 KTIMER glTimer;
@@ -91,34 +92,22 @@ void BanningQpcBypass() {
     Overwrite((PVOID)0x7FFE03C6, &patch, 1);
 }
 
-void PatchInternalData() {
-    ULONG* patch = (ULONG*)(*(ULONG_PTR*)HalpPerformanceCounterAddress + 0xE0);
-    *patch = *patch & ~0x10000;
-}
-
-void PatchCounterFunctionPtr(ULONG_PTR* CounterFunction, BOOLEAN WriteInternalData) {
-    if(*CounterFunction != (ULONG_PTR)&HalpHookedTscQueryCounterOrdered) {
-        if(!WriteInternalData) {
-            HalpTscQueryCounterOrdered = (pHalpTscQueryCounterOrdered)(*CounterFunction);
-            ActualTime.LastTime = ActualTime.ChangedTime = HalpTscQueryCounterOrdered();
-        }
-        *CounterFunction = (ULONG_PTR)&HalpHookedTscQueryCounterOrdered;
-    }
-}
-
 void HookFunction(PKDPC Dpc, PVOID DeferredContext, PVOID SystemArgument1, PVOID SystemArgument2) {
     UNREFERENCED_PARAMETER(Dpc);
     UNREFERENCED_PARAMETER(DeferredContext);
     UNREFERENCED_PARAMETER(SystemArgument1);
     UNREFERENCED_PARAMETER(SystemArgument2);
     if(HalpTimerQueryCounterHandlersBin) {
-        PatchCounterFunctionPtr((ULONG_PTR*)(HalpTimerQueryCounterHandlersAddress + *(ULONG*)(*(ULONG_PTR*)HalpPerformanceCounterAddress + 0xBC) * 16), FALSE);
+        CounterFunction = (ULONG_PTR*)(HalpTimerQueryCounterHandlersAddress + *(ULONG*)(*(ULONG_PTR*)HalpPerformanceCounterAddress + 0xBC) * 16);
     }
     else {
-        PatchCounterFunctionPtr((ULONG_PTR*)(*(ULONG_PTR*)HalpPerformanceCounterAddress + 0x70), FALSE);
+        CounterFunction = (ULONG_PTR*)(*(ULONG_PTR*)HalpPerformanceCounterAddress + 0x70);
     }
-    PatchCounterFunctionPtr((ULONG_PTR*)(*(ULONG_PTR*)HalpPerformanceCounterAddress + 0x48), TRUE);
-    PatchInternalData();
+    if(*CounterFunction != (ULONG_PTR)&HalpHookedTscQueryCounterOrdered) {
+        HalpTscQueryCounterOrdered = (pHalpTscQueryCounterOrdered)(*CounterFunction);
+        ActualTime.LastTime = ActualTime.ChangedTime = HalpTscQueryCounterOrdered();
+        *CounterFunction = (ULONG_PTR)&HalpHookedTscQueryCounterOrdered;
+    }
 }
 
 NTSTATUS TransmissionDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {

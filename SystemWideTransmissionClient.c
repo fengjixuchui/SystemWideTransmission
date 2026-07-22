@@ -12,7 +12,7 @@
 #define IOCTL_WIDE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x512, METHOD_BUFFERED, FILE_WRITE_DATA)
 
 void ShowHelp() {
-    wprintf(L"\nSystemWideTransmission v1.0\n");
+    wprintf(L"\nSystemWideTransmission v1.1\n");
     wprintf(L"Author : WindowsKin\n");
     wprintf(L"支持的系统 : Windows 8~11 x64\n\n");
     wprintf(L"用法 :\n");
